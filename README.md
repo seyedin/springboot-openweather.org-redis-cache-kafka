@@ -148,9 +148,25 @@ public void listen(ConsumerRecord<String, String> record) {
 Kafka messages are consumed in a pub-sub model using a consumer group (weather-group). Messages are not pulled from a queue but distributed to consumers in the group.
 
 ---
-## docker-compose.kafka.yml  
-This file includes Kafka and Zookeeper only:
+## Docker Setup
+You can run Redis, Kafka, and Zookeeper using Docker Compose.
+
+1- Redis Setup (Standalone)  
+docker-compose.redis.yml
+
+```yaml
+version: '3.8'
+
+services:
+  redis:
+    image: redis:6.2
+    container_name: redis
+    ports:
+      - "6379:6379"
 ```
+2- Kafka + Zookeeper Setup
+docker-compose.kafka.yml 
+```yaml
 version: '3.8'
 
 services:
@@ -176,6 +192,38 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 ```
+### Run with Docker Compose  
+```bash
+# Step 1: Start Redis
+docker-compose -f docker-compose.redis.yml up -d
+
+# Step 2: Start Kafka & Zookeeper
+docker-compose -f docker-compose.kafka.yml up -d
+
+# Step 3: Check logs if needed
+docker logs kafka
+docker logs zookeeper
+
+# Step 4: Run your Spring Boot app
+./mvnw spring-boot:run
+```
+
+### Kafka Pub/Sub
+Kafka here uses a topic-based publish/subscribe model.  
+- Producer sends a weather log to the topic weather-logs
+- Consumer (with groupId weather-group) listens and logs the message
+```java
+@KafkaListener(topics = "weather-logs", groupId = "weather-group")
+public void listen(ConsumerRecord<String, String> record) {
+    System.out.println("Received Kafka message: " + record.value());
+}
+```
+### Kafka Integration
+
+- Each successful weather data retrieval is logged via Kafka to the topic: `weather-logs`.
+- The Kafka consumer logs the message to the console.
+
+> Note: Kafka here uses the **Publish/Subscribe model**, not a traditional message queue.
 
 ---
 ---
@@ -189,26 +237,35 @@ services:
 # Redis
 docker run -d -p 6379:6379 redis
 
-# Kafka + Zookeeper (single-node)
+# Kafka + Zookeeper (single-node setup)
 docker run -d --name zookeeper -p 2181:2181 confluentinc/cp-zookeeper
-docker run -d --name kafka -p 9092:9092 --env KAFKA_ZOOKEEPER_CONNECT=host.docker.internal:2181 --env KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092 --env KAFKA_BROKER_ID=1 --env KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 confluentinc/cp-kafka
-```
 
+docker run -d --name kafka -p 9092:9092 \
+  --env KAFKA_ZOOKEEPER_CONNECT=host.docker.internal:2181 \
+  --env KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092 \
+  --env KAFKA_BROKER_ID=1 \
+  --env KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 \
+  confluentinc/cp-kafka
+```
 #### 2. Build & Run Spring Boot App
 
 ```bash
+# If using Maven wrapper:
+./mvnw clean install
 ./mvnw spring-boot:run
+
+# Or with system Maven:
+mvn clean install
+mvn spring-boot:run
 ```
 
----
-
-### 🔗 Endpoint Example
+### 3. Endpoint Example (Test the API)
 
 ```http
 GET http://localhost:8080/api/weather?city=Tehran
 ```
 
-Example response:
+You should receive a JSON response like:
 
 ```json
 {
@@ -222,19 +279,15 @@ Example response:
   "sunset": "19:45"
 }
 ```
-
+At the same time, the weather log message will be:  
+- Published to Kafka topic weather-logs by the producer
+- Consumed by the listener and printed in the console:
+```text
+Received Kafka message: Weather fetched for Tehran at 2025-06-28 19:20:42
+```
 ---
 
-### 📩 Kafka Integration
-
-- Each successful weather data retrieval is logged via Kafka to the topic: `weather-logs`.
-- The Kafka consumer logs the message to the console.
-
-> 🧠 Note: Kafka here uses the **Publish/Subscribe model**, not a traditional message queue.
-
----
-
-### ✅ Sample Output (Kafka Consumer)
+### Sample Output (Kafka Consumer)
 
 ```
 Received Kafka message: Weather data for Tehran: 31.0°C, Clear
@@ -242,14 +295,14 @@ Received Kafka message: Weather data for Tehran: 31.0°C, Clear
 
 ---
 
-### 📌 Commit Info
+### Commit Info
 
 > **Initial and final commit:** Spring Boot weather app with Redis caching & Kafka logging  
 > _(Kafka uses pub/sub model instead of traditional message queue)_
 
 ---
 
-### 🧑‍💻 Author
+### Author
 
 - Developed by: **Sanaz Seyedin**
-- Contact: `sanazseyedin@example.com` *(replace with your real email)*
+- Contact: `s.s.seyedein@outlook.com`

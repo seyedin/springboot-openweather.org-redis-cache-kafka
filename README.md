@@ -87,7 +87,6 @@ openweather:
     key: YOUR_API_KEY_HERE
     url: https://api.openweathermap.org/data/2.5/weather
 ```
-
 ---
 
 ### How to Get OpenWeather API Key
@@ -105,9 +104,9 @@ openweather:
 > After verifying your email, it may take a while for the API key to become active.
 
 ---
-## Kafka Setup & Docker Compose Integration
+### Kafka Setup & Docker Compose Integration
 
-### 1. Kafka Configuration in Spring Boot
+1. Kafka Configuration in Spring Boot
 
 Kafka is configured in the `application.yml` file as follows:
 
@@ -124,30 +123,43 @@ spring:
 - bootstrap-servers: Specifies the Kafka broker location.
 - weather-logs: The topic used for publishing weather log messages.
 - Key and value serializers are set to handle plain strings.
+  
 ---
-### 2. Kafka Producer & Consumer
+
+2. Kafka Producer & Consumer
 
 - Kafka Producer
   The WeatherKafkaProducer class is used to publish weather log messages:
-```
+  
+```java
 kafkaProducer.sendWeatherLog(
     "Weather data for " + city + ": " + custom.getTemperature() + "°C, " + custom.getWeather()
 );
 ```
+
 This is called from within the WeatherService class after fetching and mapping weather data.  
 
 - Kafka Producer
   The WeatherKafkaConsumer class listens to the same topic:
 
-```
+```java
 @KafkaListener(topics = "weather-logs", groupId = "weather-group")
 public void listen(ConsumerRecord<String, String> record) {
     System.out.println("Received Kafka message: " + record.value());
 }
 ```
-Kafka messages are consumed in a pub-sub model using a consumer group (weather-group). Messages are not pulled from a queue but distributed to consumers in the group.
+- Kafka messages are consumed in a pub-sub model using a consumer group (weather-group). Messages are not pulled from a queue but distributed to consumers in the group.
+- Producer sends a weather log to the topic weather-logs
+- Consumer (with groupId weather-group) listens and logs the message
+  
+### Kafka Integration
 
+- Each successful weather data retrieval is logged via Kafka to the topic: `weather-logs`.
+- The Kafka consumer logs the message to the console.
+
+> Note: Kafka here uses the **Publish/Subscribe model**, not a traditional message queue.
 ---
+
 ## Docker Setup
 You can run Redis, Kafka, and Zookeeper using Docker Compose.
 
@@ -193,6 +205,7 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 ```
 ### Run with Docker Compose  
+
 ```bash
 # Step 1: Start Redis
 docker-compose -f docker-compose.redis.yml up -d
@@ -207,26 +220,6 @@ docker logs zookeeper
 # Step 4: Run your Spring Boot app
 ./mvnw spring-boot:run
 ```
-
-### Kafka Pub/Sub
-Kafka here uses a topic-based publish/subscribe model.  
-- Producer sends a weather log to the topic weather-logs
-- Consumer (with groupId weather-group) listens and logs the message
-```java
-@KafkaListener(topics = "weather-logs", groupId = "weather-group")
-public void listen(ConsumerRecord<String, String> record) {
-    System.out.println("Received Kafka message: " + record.value());
-}
-```
-### Kafka Integration
-
-- Each successful weather data retrieval is logged via Kafka to the topic: `weather-logs`.
-- The Kafka consumer logs the message to the console.
-
-> Note: Kafka here uses the **Publish/Subscribe model**, not a traditional message queue.
-
----
----
 ---
 
 ### How to Run the App

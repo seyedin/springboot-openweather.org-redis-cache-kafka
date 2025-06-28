@@ -1,0 +1,23 @@
+server:
+  port: 8080
+
+spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+kafka:
+  topic:
+    weather-log: weather-logs
+
+openweather:
+  api:
+    key: 1ce093ff2b873adbd65c5eba2b433b67
+    url: https://api.openweathermap.org/data/2.5/weather
